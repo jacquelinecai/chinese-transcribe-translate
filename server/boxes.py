@@ -1,8 +1,7 @@
 import cv2
-import numpy as np
 import os
 import glob
-
+import numpy as np
 
 def process_image(input_path, output_dir):
     filename = os.path.basename(input_path)
@@ -18,40 +17,59 @@ def process_image(input_path, output_dir):
     if img is None:
         print(f"Error: Could not read image {input_path}")
         return
+
+    cv2.imwrite(os.path.join(output_dir, "original.jpg"), img)
     
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cv2.imwrite(os.path.join(output_dir, "grayscale.jpg"), gray)
     
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                cv2.THRESH_BINARY_INV, 11, 2)
-
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 25))
-
-    horizontal_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
-
-    vertical_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
-
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    enhanced = clahe.apply(gray)
+    cv2.imwrite(os.path.join(output_dir, "enhanced.jpg"), enhanced)
+    
+    thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                cv2.THRESH_BINARY_INV, 21, 1)
+    cv2.imwrite(os.path.join(output_dir, "threshold.jpg"), thresh)
+    
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (35, 1))
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 35))
+    
+    horizontal_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, horizontal_kernel, iterations=3)
+    cv2.imwrite(os.path.join(output_dir, "horizontal_lines.jpg"), horizontal_lines)
+    
+    vertical_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, vertical_kernel, iterations=3)
+    cv2.imwrite(os.path.join(output_dir, "vertical_lines.jpg"), vertical_lines)
+    
     grid = cv2.add(horizontal_lines, vertical_lines)
-
+    
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    grid = cv2.dilate(grid, kernel, iterations=1)
-
+    grid = cv2.dilate(grid, kernel, iterations=2)
+    cv2.imwrite(os.path.join(output_dir, "grid_lines.jpg"), grid)
+    
     contours, _ = cv2.findContours(grid, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
-    main_grid = contours[0]
-
-    x, y, w, h = cv2.boundingRect(main_grid)
+    
+    if not contours:
+        print("No grid contours found. Using full image as fallback.")
+        h, w = img.shape[:2]
+        x, y, w, h = 0, 0, w, h
+    else:
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        main_grid = contours[0]
+        x, y, w, h = cv2.boundingRect(main_grid)
+    
+    bbox_img = img.copy()
+    cv2.rectangle(bbox_img, (x, y), (x+w, y+h), (0, 0, 255), 2)
+    cv2.imwrite(os.path.join(output_dir, "bounding_box.jpg"), bbox_img)
+    
     main_grid_img = img[y:y+h, x:x+w].copy()
-
     cv2.imwrite(os.path.join(output_dir, "main_grid.jpg"), main_grid_img)
-
+    
     num_rows = 14
     num_cols = 10
-
+    
     cell_height = h // num_rows
     cell_width = w // num_cols
-
+    
     cell_count = 0
     for row in range(num_rows):
         for col in range(num_cols):
@@ -64,18 +82,16 @@ def process_image(input_path, output_dir):
             cv2.imwrite(os.path.join(output_dir, cell_filename), cell_img)
             
             cell_count += 1
-
+    
     visualization = main_grid_img.copy()
     for row in range(num_rows):
         for col in range(num_cols):
             start_point = (col * cell_width, row * cell_height)
             end_point = ((col + 1) * cell_width, (row + 1) * cell_height)
             cv2.rectangle(visualization, start_point, end_point, (0, 255, 0), 2)
-
+    
     cv2.imwrite(os.path.join(output_dir, "cell_boundaries.jpg"), visualization)
-
-    cv2.imwrite(os.path.join(output_dir, "grid_lines.jpg"), grid)
-
+    
     print(f"Extracted and saved {cell_count} cells to '{output_dir}' directory")
     print(f"Also saved main grid, grid lines, and visualization images")
 
@@ -88,7 +104,7 @@ def main():
     image_pattern = os.path.join(sample_dir, "*.png")
     
     image_files = glob.glob(image_pattern)
-    image_files = ['./data/samples/Sibling-pg2.png', './data/samples/Parent2-pg2.png', './data/samples/Sibling-pg1.png', './data/samples/Parent2-pg1.png']
+    image_files = ['./data/samples/Parent2-pg1.png', './data/samples/Parent2-pg2.png']
     print(image_files)
     
     if not image_files:
