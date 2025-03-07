@@ -96,7 +96,7 @@ def train_cnn(model, train_loader, num_epochs, learning_rate):
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_directory, "..", "data", "chinese_characters", "train")
-    num_epochs = 20
+    num_epochs = 15
     learning_rate = 0.0005 
 
     dataset, train_loader = load_dataset(data_dir, batch_size)
