@@ -1,6 +1,6 @@
 import os
 
-train_dir = "/Users/zhouannie/Downloads/data/chinese_characters" 
+train_dir = "data/chinese_characters/train" 
 
 for char_class in os.listdir(train_dir):
     char_path = os.path.join(train_dir, char_class)
@@ -11,7 +11,7 @@ for char_class in os.listdir(train_dir):
         for img in images:
             filename, file_ex = os.path.splitext(img)
             img_number = int(filename)
-            if img_number < 91:
+            if img_number < 1 or img_number > 10:
                 img_path = os.path.join(char_path, img)
                 os.remove(img_path)
 
