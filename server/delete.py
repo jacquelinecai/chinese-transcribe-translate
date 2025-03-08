@@ -11,7 +11,7 @@ for char_class in os.listdir(train_dir):
         for img in images:
             filename, file_ex = os.path.splitext(img)
             img_number = int(filename)
-            if img_number < 1 or img_number > 90:
+            if img_number < 91:
                 img_path = os.path.join(char_path, img)
                 os.remove(img_path)
 
