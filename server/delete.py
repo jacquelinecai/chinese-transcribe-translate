@@ -1,6 +1,6 @@
 import os
 
-train_dir = "data/chinese_characters/train" 
+train_dir = "d/Users/zhouannie/Documents/GitHub/cs4701-project/data/chinese_characters/Test" 
 
 for char_class in os.listdir(train_dir):
     char_path = os.path.join(train_dir, char_class)
