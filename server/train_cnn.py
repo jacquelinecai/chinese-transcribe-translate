@@ -88,16 +88,16 @@ def train_cnn(model, train_loader, num_epochs, learning_rate):
 
         scheduler.step()
 
-        print("Epoch" + str(epoch+1) + "/" + str(num_epochs) + " - Loss: " + str(round(running_loss / len(train_loader), 4)))
+        print("Epoch " + str(epoch+1) + "/" + str(num_epochs) + " - Loss: " + str(round(running_loss / len(train_loader), 4)))
 
     print("Training complete.")
-    torch.save(model.state_dict(), "chinese_character_cnn.pth")
+    torch.save(model.state_dict(), "chinese_character_cnn2.pth")
 
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(current_directory, "..", "data", "chinese_characters", "train")
-    num_epochs = 15
-    learning_rate = 0.0005 
+    data_dir = os.path.join(current_directory, "..", "data", "chinese_characters_train")
+    num_epochs = 40
+    learning_rate = 0.0005
 
     dataset, train_loader = load_dataset(data_dir, batch_size)
 
