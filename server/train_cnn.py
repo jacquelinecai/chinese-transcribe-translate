@@ -13,27 +13,30 @@ class HandwrittenChineseCNN(nn.Module):
         super(HandwrittenChineseCNN, self).__init__()
 
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2),  
+            nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1),  
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
-            nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),  
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),  
             nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  
-            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         self.fc_layers = nn.Sequential(
-            nn.Linear(128 * 4 * 4, 512),
+            nn.Linear(64 * 4 * 4, 256),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(512, num_classes)
+            nn.Linear(256, num_classes)
         )
 
     def forward(self, x):
@@ -57,8 +60,8 @@ def load_dataset(data_dir, batch_size):
 
     return dataset, dataloader
 
-def train_cnn(model, train_loader, num_epochs, learning_rate):
-    if torch.cuda.is_available:
+def train_cnn(model, train_loader, val_loader, num_epochs, learning_rate):
+    if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
@@ -69,6 +72,8 @@ def train_cnn(model, train_loader, num_epochs, learning_rate):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+
+    best_val_acc = 0.0
 
     print("Starting Training...", flush=True)
     for epoch in range(num_epochs):
@@ -86,23 +91,57 @@ def train_cnn(model, train_loader, num_epochs, learning_rate):
 
             running_loss += loss.item()
 
+        train_loss = running_loss / len(train_loader)
+        
+        if (epoch + 1) % 5 == 0 or epoch == 0:
+            model.eval()
+            val_loss = 0.0
+            correct = 0
+            total = 0
+            
+            with torch.no_grad():
+                for images, labels in val_loader:
+                    images, labels = images.to(device), labels.to(device)
+                    outputs = model(images)
+                    loss = criterion(outputs, labels)
+                    
+                    val_loss += loss.item()
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
+            
+            val_accuracy = 100 * correct / total
+            val_loss = val_loss / len(val_loader)
+
+            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
+
+            if val_accuracy > best_val_acc:
+                best_val_acc = val_accuracy
+                torch.save(model.state_dict(), "chinese_character_cnn_best.pth")
+                print(f"Saved new best model with accuracy: {val_accuracy:.2f}%")
+
+        else:
+            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}")
+
         scheduler.step()
 
-        print("Epoch " + str(epoch+1) + "/" + str(num_epochs) + " - Loss: " + str(round(running_loss / len(train_loader), 4)))
+        # print("Epoch " + str(epoch+1) + "/" + str(num_epochs) + " - Loss: " + str(round(running_loss / len(train_loader), 4)))
 
-    print("Training complete.")
+    print("Training complete. Best validation accuracy: {:.2f}%".format(best_val_acc))
     torch.save(model.state_dict(), "chinese_character_cnn2.pth")
 
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_directory, "..", "data", "chinese_characters_train")
+    val_dir = os.path.join(current_directory, "..", "data", "chinese_characters_test")
     num_epochs = 40
-    learning_rate = 0.0005
+    learning_rate = 0.001
 
-    dataset, train_loader = load_dataset(data_dir, batch_size)
+    train_dataset, train_loader = load_dataset(data_dir, batch_size)
+    val_dataset, val_loader = load_dataset(val_dir, batch_size)
 
-    num_classes = len(dataset.classes)
+    num_classes = len(train_dataset.classes)
     print("Number of Classes (Training): " + str(num_classes)) 
 
     model = HandwrittenChineseCNN(num_classes)
-    train_cnn(model, train_loader, num_epochs, learning_rate)
+    train_cnn(model, train_loader, val_loader, num_epochs, learning_rate)
