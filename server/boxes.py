@@ -165,7 +165,7 @@ def main():
     image_files = glob.glob(image_pattern)
     
     # If you want to process specific files only, uncomment and adjust this:
-    image_files = ['./data/samples/Prompts 2-1.png', './data/samples/Prompts 2-2.png', './data/samples/Prompts 2-3.png']
+    image_files = ['./data/samples/Prompts 3-1.png', './data/samples/Prompts 3-2.png', './data/samples/Prompts 3-3.png']
     
     if not image_files:
         print(f"No PNG files found in {sample_dir}")
