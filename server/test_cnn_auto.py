@@ -84,7 +84,7 @@ def get_folders_from_target_directory(target_directory):
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_directory, "..", "data", "chinese_characters_test")
-    model_path = os.path.join(current_directory, "chinese_character_cnn.pth")
+    model_path = os.path.join(current_directory, "chinese_character_cnn3.pth")
     
     class_labels = get_folders_from_target_directory(data_dir)
     class_labels.sort()

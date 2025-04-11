@@ -104,7 +104,7 @@ def main():
     image_pattern = os.path.join(sample_dir, "*.png")
     
     image_files = glob.glob(image_pattern)
-    image_files = ['./data/samples/Parent2-pg1.png', './data/samples/Parent2-pg2.png']
+    image_files = ['./data/samples/Prompts 2-1.png', './data/samples/Prompts 2-2.png', './data/samples/Prompts 2-3.png']
     print(image_files)
     
     if not image_files:

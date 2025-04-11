@@ -78,7 +78,7 @@ def predict_character(image_path, model, class_labels, top_n=5):
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_directory, "..", "data", "chinese_characters_test")
-    model_path = os.path.join(current_directory, "chinese_character_cnn.pth")
+    model_path = os.path.join(current_directory, "chinese_character_cnn2.pth")
 
     class_labels = []
     for d in os.listdir(data_dir):
