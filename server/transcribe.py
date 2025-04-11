@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import Image
 import os
+import re
 
 
 class HandwrittenChineseCNN(nn.Module):
@@ -53,6 +54,18 @@ def preprocess_image(image_path):
     image = transform(image)
     image = image.unsqueeze(0)
     return image
+
+def extract_row_col(filename):
+    """
+    Extracts (row, col) as integers from a filename like 'char_r9_c9.jpg'
+    """
+    match = re.search(r'r(\d+)_c(\d+)', filename)
+    if match:
+        row = int(match.group(1))
+        col = int(match.group(2))
+        return (row, col)
+    else:
+        return (float('inf'), float('inf'))
 
 def predict_character(image_path, model, class_labels, top_n=5):
     if torch.cuda.is_available():
@@ -107,12 +120,18 @@ if __name__ == "__main__":
         folder_path = os.path.join(test_dir, folder)
         sentence = []
 
-        for image_name in sorted(os.listdir(folder_path)):
-            if (image_name == 'cell_boundaries.jpg'): continue
+        image_names = [f for f in os.listdir(folder_path)]
+        image_names.sort(key=lambda name: extract_row_col(name))
+
+        for image_name in image_names:
+            if (image_name[:6] != 'char_r'): continue
             image_path = os.path.join(folder_path, image_name)
             if os.path.isfile(image_path):
                 prediction = predict_character(image_path, model, class_labels, top_n=1)
+                #print('image path: ' + image_name + ', pred:' + prediction)
                 sentence.append(prediction)
 
         sentence_str = ''.join(sentence)
+        if (sentence_str == ''): continue;
+        print()
         print(f"Folder: {folder} | Predicted Sentence: {sentence_str}")
