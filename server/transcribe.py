@@ -116,7 +116,7 @@ if __name__ == "__main__":
     folders = get_folders_from_target_directory(test_dir)
     sentence = []
 
-    for folder in folders:
+    for folder in sorted(folders):
         folder_path = os.path.join(test_dir, folder)
         sentence = []
 
