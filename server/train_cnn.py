@@ -91,7 +91,7 @@ def train_cnn(model, train_loader, num_epochs, learning_rate):
         print("Epoch " + str(epoch+1) + "/" + str(num_epochs) + " - Loss: " + str(round(running_loss / len(train_loader), 4)))
 
     print("Training complete.")
-    torch.save(model.state_dict(), "chinese_character_cnn4.pth")
+    torch.save(model.state_dict(), "chinese_character_cnn4_with_spaces.pth")
 
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))

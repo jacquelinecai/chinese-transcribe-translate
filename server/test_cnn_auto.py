@@ -70,7 +70,7 @@ def predict_character(image_path, model, class_labels, top_n=5):
         top_probs, top_indices = torch.topk(probs, top_n, dim=1)
     
     top_1_char = class_labels[top_indices[0][0].item()]
-    top_2_char = class_labels[top_indices[0][1].item()]
+    # top_2_char = class_labels[top_indices[0][1].item()]
 
     return top_1_char
 
@@ -84,7 +84,7 @@ def get_folders_from_target_directory(target_directory):
 if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_directory, "..", "data", "chinese_characters_test")
-    model_path = os.path.join(current_directory, "chinese_character_cnn3.pth")
+    model_path = os.path.join(current_directory, "chinese_character_cnn4_with_spaces.pth")
     
     class_labels = get_folders_from_target_directory(data_dir)
     class_labels.sort()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
             if os.path.isfile(image_path):
                 prediction = predict_character(image_path, model, class_labels, top_n=2)
                 total_images += 1
-                print('predicted: ' + prediction + ', actual: '+ str(folder))
+                # print('predicted: ' + prediction + ', actual: '+ str(folder))
                 if folder == prediction:
                     correct_predictions += 1
     
