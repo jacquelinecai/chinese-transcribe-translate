@@ -155,17 +155,17 @@ def process_image(input_path, output_dir):
     print(f"Cropped characters based on their actual boundaries")
 
 def main():
-    output_base_dir = "extracted_cells"
+    output_base_dir = "uploaded_extracted_cells"
     if not os.path.exists(output_base_dir):
         os.makedirs(output_base_dir)
     
-    sample_dir = "./data/samples"
+    sample_dir = "./uploads"
     image_pattern = os.path.join(sample_dir, "*.png")
     
     image_files = glob.glob(image_pattern)
     
     # If you want to process specific files only, uncomment and adjust this:
-    image_files = ['./data/samples/Prompts 3-1.png', './data/samples/Prompts 3-2.png', './data/samples/Prompts 3-3.png']
+    # image_files = ['./data/samples/Prompts 3-1.png', './data/samples/Prompts 3-2.png', './data/samples/Prompts 3-3.png']
     
     if not image_files:
         print(f"No PNG files found in {sample_dir}")

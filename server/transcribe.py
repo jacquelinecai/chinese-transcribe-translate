@@ -94,7 +94,7 @@ def get_folders_from_target_directory(target_directory):
 
     return [entry.name for entry in os.scandir(target_directory) if entry.is_dir()]
 
-if __name__ == "__main__":
+def main():
     current_directory = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_directory, "..", "data", "chinese_characters_test")
     model_path = os.path.join(current_directory, "chinese_character_cnn4_with_spaces.pth")
@@ -112,9 +112,9 @@ if __name__ == "__main__":
     model.load_state_dict(model_weights)
     model.eval()
 
-    test_dir = os.path.join(current_directory, "..", "extracted_cells")
+    test_dir = os.path.join(current_directory, "..", "uploaded_extracted_cells")
     folders = get_folders_from_target_directory(test_dir)
-    sentence = []
+    results = {}
 
     for folder in sorted(folders):
         folder_path = os.path.join(test_dir, folder)
@@ -129,10 +129,14 @@ if __name__ == "__main__":
             if os.path.isfile(image_path):
                 prediction = predict_character(image_path, model, class_labels, top_n=1)
                 if (prediction == '_'): break
-                #print('image path: ' + image_name + ', pred:' + prediction)
                 sentence.append(prediction)
 
         sentence_str = ''.join(sentence)
-        if (sentence_str == ''): continue;
-        print()
+        if (sentence_str == ''): continue
+        results[folder] = sentence_str
         print(f"Folder: {folder} | Predicted Sentence: {sentence_str}")
+    
+    return results
+
+if __name__ == "__main__":
+    main()
