@@ -112,7 +112,7 @@ if __name__ == "__main__":
             if os.path.isfile(image_path):
                 prediction = predict_character(image_path, model, class_labels, top_n=2)
                 total_images += 1
-                # print('predicted: ' + prediction + ', actual: '+ str(folder))
+                print('predicted: ' + prediction + ', actual: '+ str(folder))
                 if folder == prediction:
                     correct_predictions += 1
     
