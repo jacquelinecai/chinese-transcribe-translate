@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import os
 from werkzeug.utils import secure_filename
+import shutil
 
 from boxes import main as extract_text_main
 from transcribe import main as transcribe_main
@@ -10,6 +11,7 @@ app = Flask(__name__)
 
 # Configure upload folder for images
 UPLOAD_FOLDER = 'uploads'
+UPLOAD_CELLS_FOLDER = 'uploaded_extracted_cells'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -19,7 +21,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit file size to 16MB
 def index():
     return ""
 
-@app.route('/api/extract-text', methods=['POST'])
+@app.route('/api/extract-cells', methods=['POST'])
 def extract_text():
     """
     Extract text from uploaded images using boxes.py
@@ -50,6 +52,9 @@ def extract_text():
     try:
         # Call the extract_text_main function
         result = extract_text_main()
+        if os.path.exists(UPLOAD_FOLDER):
+            shutil.rmtree(UPLOAD_FOLDER)
+            print(f"Directory '{UPLOAD_FOLDER}' and its contents deleted successfully.")
         return jsonify({'result': result}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -62,6 +67,9 @@ def transcribe():
     try:
         # Call the transcribe_main function
         result = transcribe_main()
+        if os.path.exists(UPLOAD_CELLS_FOLDER):
+            shutil.rmtree(UPLOAD_CELLS_FOLDER)
+            print(f"Directory '{UPLOAD_CELLS_FOLDER}' and its contents deleted successfully.")
         return {'result': result}, 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
