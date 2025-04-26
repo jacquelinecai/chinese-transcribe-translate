@@ -7,6 +7,8 @@ import json
 from collections import Counter
 from itertools import chain
 
+# ------------------ Model Components ------------------
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads):
         super(MultiHeadAttention, self).__init__()
@@ -47,6 +49,7 @@ class PositionWiseFeedForward(nn.Module):
         self.fc1 = nn.Linear(d_model, d_ff)
         self.fc2 = nn.Linear(d_ff, d_model)
         self.relu = nn.ReLU()
+
     def forward(self, x):
         return self.fc2(self.relu(self.fc1(x)))
 
@@ -59,6 +62,7 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(pos * div_term)
         pe[:, 1::2] = torch.cos(pos * div_term)
         self.register_buffer('pe', pe.unsqueeze(0))
+
     def forward(self, x):
         return x + self.pe[:, :x.size(1)]
 
@@ -70,6 +74,7 @@ class EncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
+
     def forward(self, x, mask):
         attn_out = self.self_attn(x, x, x, mask)
         x = self.norm1(x + self.dropout(attn_out))
@@ -86,6 +91,7 @@ class DecoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
+
     def forward(self, x, enc_out, src_mask, tgt_mask):
         x2 = self.self_attn(x, x, x, tgt_mask)
         x = self.norm1(x + self.dropout(x2))
@@ -116,7 +122,7 @@ class Transformer(nn.Module):
         src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
         tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3)
         size = tgt.size(1)
-        nopeak = torch.triu(torch.ones(1, size, size), diagonal=1).bool()
+        nopeak = torch.triu(torch.ones(1, size, size), diagonal=1).bool().to(tgt.device)
         tgt_mask = tgt_mask & ~nopeak
         return src_mask, tgt_mask
 
@@ -132,6 +138,8 @@ class Transformer(nn.Module):
             dec_out = layer(dec_out, enc_out, src_mask, tgt_mask)
         return self.fc(dec_out)
 
+# ------------------ Dataset ------------------
+
 class TranslationDataset(data.Dataset):
     def __init__(self, path, src_vocab=None, tgt_vocab=None, min_freq=2):
         with open(path, 'r', encoding='utf-8') as f:
@@ -142,19 +150,22 @@ class TranslationDataset(data.Dataset):
                 raise ValueError
         except (json.JSONDecodeError, ValueError):
             data_list = [json.loads(l) for l in text.splitlines() if l.strip()]
+
         self.src_sentences = [d['english'].lower().split() for d in data_list]
         self.tgt_sentences = [d['chinese'].lower().split() for d in data_list]
+
         specials = ['<pad>', '<unk>', '<sos>', '<eos>']
         if src_vocab is None:
             ctr = Counter(chain.from_iterable(self.src_sentences))
-            tokens = [w for w,c in ctr.items() if c >= min_freq]
-            self.src_vocab = {tok:i for i,tok in enumerate(specials + tokens)}
+            tokens = [w for w, c in ctr.items() if c >= min_freq]
+            self.src_vocab = {tok: i for i, tok in enumerate(specials + tokens)}
         else:
             self.src_vocab = src_vocab
+
         if tgt_vocab is None:
             ctr = Counter(chain.from_iterable(self.tgt_sentences))
-            tokens = [w for w,c in ctr.items() if c >= min_freq]
-            self.tgt_vocab = {tok:i for i,tok in enumerate(specials + tokens)}
+            tokens = [w for w, c in ctr.items() if c >= min_freq]
+            self.tgt_vocab = {tok: i for i, tok in enumerate(specials + tokens)}
         else:
             self.tgt_vocab = tgt_vocab
 
@@ -170,27 +181,53 @@ class TranslationDataset(data.Dataset):
         tgt_ids = [self.tgt_vocab['<sos>']] + tgt_ids + [self.tgt_vocab['<eos>']]
         return torch.tensor(src_ids), torch.tensor(tgt_ids)
 
+# ------------------ Training Utilities ------------------
+
 def collate_fn(batch):
     src_batch, tgt_batch = zip(*batch)
     src_padded = nn.utils.rnn.pad_sequence(src_batch, padding_value=0, batch_first=True)
     tgt_padded = nn.utils.rnn.pad_sequence(tgt_batch, padding_value=0, batch_first=True)
     return src_padded, tgt_padded
 
+class LabelSmoothingLoss(nn.Module):
+    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=0):
+        super(LabelSmoothingLoss, self).__init__()
+        self.ignore_index = ignore_index
+        self.criterion = nn.KLDivLoss(reduction='batchmean')
+        self.confidence = 1.0 - label_smoothing
+        self.smoothing = label_smoothing
+        self.tgt_vocab_size = tgt_vocab_size
+
+    def forward(self, pred, target):
+        pred = pred.log_softmax(dim=-1)
+        true_dist = torch.zeros_like(pred)
+        true_dist.fill_(self.smoothing / (self.tgt_vocab_size - 2))
+        ignore = target == self.ignore_index
+        target = target.masked_fill(ignore, 0)
+        true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
+        true_dist.masked_fill_(ignore.unsqueeze(1), 0)
+        return self.criterion(pred, true_dist)
+
+# ------------------ Training ------------------
 
 def train_transformer():
-    d_model = 512
-    num_heads = 8
-    num_layers = 6
-    d_ff = 2048
-    max_seq_length = 100
-    dropout = 0.1
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
-    train_ds = TranslationDataset("data/translation2019zh/translation2019zh_train.json")
+    d_model = 256
+    num_heads = 4
+    num_layers = 3
+    d_ff = 1024
+    max_seq_length = 100
+    dropout = 0.35
+
+    train_ds = TranslationDataset("../data/translation2019zh/translation2019zh_train.json")
     valid_ds = TranslationDataset(
-        "data/translation2019zh/translation2019zh_valid.json",
+        "../data/translation2019zh/translation2019zh_valid.json",
         src_vocab=train_ds.src_vocab,
         tgt_vocab=train_ds.tgt_vocab
     )
+
     train_loader = data.DataLoader(train_ds, batch_size=64, shuffle=True, collate_fn=collate_fn)
     valid_loader = data.DataLoader(valid_ds, batch_size=64, shuffle=False, collate_fn=collate_fn)
 
@@ -206,34 +243,46 @@ def train_transformer():
         d_ff=d_ff,
         max_seq_length=max_seq_length,
         dropout=dropout
-    )
+    ).to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=train_ds.tgt_vocab['<pad>'])
+    criterion = LabelSmoothingLoss(label_smoothing=0.1, tgt_vocab_size=tgt_vocab_size, ignore_index=train_ds.tgt_vocab['<pad>'])
     optimizer = optim.Adam(transformer.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-9)
 
     transformer.train()
-    num_epochs = 100
+    num_epochs = 30
+
     for epoch in range(num_epochs):
         total_loss = 0
         for src_batch, tgt_batch in train_loader:
+            src_batch = src_batch.to(device)
+            tgt_batch = tgt_batch.to(device)
+
             optimizer.zero_grad()
             output = transformer(src_batch, tgt_batch[:, :-1])
             loss = criterion(output.view(-1, output.size(-1)), tgt_batch[:, 1:].reshape(-1))
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
+
         print(f"Epoch {epoch+1}, Train Loss: {total_loss/len(train_loader):.4f}")
 
         transformer.eval()
         val_loss = 0
         with torch.no_grad():
             for src_batch, tgt_batch in valid_loader:
+                src_batch = src_batch.to(device)
+                tgt_batch = tgt_batch.to(device)
                 output = transformer(src_batch, tgt_batch[:, :-1])
                 val_loss += criterion(output.view(-1, output.size(-1)), tgt_batch[:, 1:].reshape(-1)).item()
+
         print(f"           Valid Loss: {val_loss/len(valid_loader):.4f}")
         transformer.train()
 
+    torch.save(transformer.state_dict(), "transformer_model_small.pth")
+    print("Model saved as transformer_model_small.pth")
     return transformer
+
+# ------------------ Run ------------------
 
 if __name__ == "__main__":
     model = train_transformer()
