@@ -144,8 +144,8 @@ class TranslationDataset(data.Dataset):
                 raise ValueError
         except (json.JSONDecodeError, ValueError):
             data_list = [json.loads(line) for line in text.splitlines() if line.strip()]
-        self.src_sentences = [d['english'].lower().split() for d in data_list]
-        self.tgt_sentences = [d['chinese'].lower().split() for d in data_list]
+        self.src_sentences = [list(d['chinese'].lower()) for d in data_list]
+        self.tgt_sentences = [d['english'].lower().split() for d in data_list]
 
         specials = ['<pad>', '<unk>', '<sos>', '<eos>']
         if src_vocab is None:
