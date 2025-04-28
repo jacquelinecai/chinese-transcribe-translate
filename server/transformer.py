@@ -278,8 +278,8 @@ def train_transformer():
         print(f"           Valid Loss: {val_loss/len(valid_loader):.4f}")
         transformer.train()
 
-    torch.save(transformer.state_dict(), "transformer_model_small.pth")
-    print("Model saved as transformer_model_small.pth")
+    torch.save(transformer.state_dict(), "transformer_model_small_new.pth")
+    print("Model saved as transformer_model_small_new.pth")
     return transformer
 
 # ------------------ Run ------------------
