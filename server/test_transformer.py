@@ -6,8 +6,8 @@ import os
 import torch
 import torch.nn.functional as F
 from googletrans import Translator
-from transformer_bert import Transformer, TranslationDataset, compute_bert_score
-
+from transformer import Transformer, TranslationDataset
+from transformer_bert import compute_bert_score
 
 def translate_with_model(model, device, sentence: str) -> str:
     """Tokenize Chinese properly - character by character"""
@@ -79,7 +79,7 @@ def main():
     # Paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, '..', 'data', 'translation2019zh')
-    model_path = os.path.join(base_dir, 'transformer_model_small.pth')
+    model_path = os.path.join(base_dir, 'transformer_model_small_chin_eng.pth')
 
     # Print debugging info
     print(f"Base directory: {base_dir}")
@@ -103,12 +103,12 @@ def main():
     model = Transformer(
         src_vocab_size=len(train_ds.src_vocab),
         tgt_vocab_size=len(train_ds.tgt_vocab),
-        d_model=256,  # Changed from 384 to match checkpoint
-        num_heads=4,  # Adjusted
-        num_layers=3,  # Changed from 4 to match checkpoint
-        d_ff=1024,    # Changed from 1536 to match checkpoint
+        d_model=256,
+        num_heads=4,
+        num_layers=3,
+        d_ff=1024,
         max_seq_length=100,
-        dropout=0.3
+        dropout=0.35
     )
     print("Successfully created model")
     print(f"Model architecture:\n{model}")

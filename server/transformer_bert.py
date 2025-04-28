@@ -271,8 +271,8 @@ def train_transformer():
         bert = compute_bert_score(all_preds, all_targets)
         print(f"           Valid Loss: {val_loss/len(valid_loader):.4f}, BERTScore: {bert:.4f}")
 
-    torch.save(model.state_dict(), "transformer_model_small.pth")
-    print("Saved transformer_model_small.pth")
+    torch.save(model.state_dict(), "transformer_model_small_chin_to_engl.pth")
+    print("Saved transformer_model_small_chin_to_engl.pth")
 
 if __name__ == "__main__":
     train_transformer()

@@ -151,8 +151,8 @@ class TranslationDataset(data.Dataset):
         except (json.JSONDecodeError, ValueError):
             data_list = [json.loads(l) for l in text.splitlines() if l.strip()]
 
-        self.src_sentences = [d['english'].lower().split() for d in data_list]
-        self.tgt_sentences = [d['chinese'].lower().split() for d in data_list]
+        self.src_sentences = [list(d['chinese'].lower()) for d in data_list]
+        self.tgt_sentences = [d['english'].lower().split() for d in data_list]
 
         specials = ['<pad>', '<unk>', '<sos>', '<eos>']
         if src_vocab is None:
@@ -278,8 +278,8 @@ def train_transformer():
         print(f"           Valid Loss: {val_loss/len(valid_loader):.4f}")
         transformer.train()
 
-    torch.save(transformer.state_dict(), "transformer_model_small_new.pth")
-    print("Model saved as transformer_model_small_new.pth")
+    torch.save(transformer.state_dict(), "transformer_model_small_chin_eng.pth")
+    print("Model saved as transformer_model_small_chin_eng.pth")
     return transformer
 
 # ------------------ Run ------------------
