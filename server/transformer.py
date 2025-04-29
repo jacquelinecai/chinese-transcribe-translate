@@ -218,7 +218,7 @@ def train_transformer():
     num_heads = 4
     num_layers = 3
     d_ff = 1024
-    max_seq_length = 100
+    max_seq_length = 256
     dropout = 0.35
 
     train_ds = TranslationDataset("../data/translation2019zh/translation2019zh_train.json")
@@ -278,7 +278,7 @@ def train_transformer():
         print(f"           Valid Loss: {val_loss/len(valid_loader):.4f}")
         transformer.train()
 
-    torch.save(transformer.state_dict(), "transformer_model_small_chin_eng.pth")
+    torch.save({k: v.half() for k, v in transformer.state_dict().items()}, "transformer_model_small_chin_eng.pth")
     print("Model saved as transformer_model_small_chin_eng.pth")
     return transformer
 
