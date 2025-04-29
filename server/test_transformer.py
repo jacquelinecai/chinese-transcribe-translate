@@ -107,7 +107,7 @@ def main():
         num_heads=4,
         num_layers=3,
         d_ff=1024,
-        max_seq_length=100,
+        max_seq_length=256,
         dropout=0.35
     )
     print("Successfully created model")
@@ -121,6 +121,8 @@ def main():
         model_weights = torch.load(model_path, map_location=device)
         print("Successfully loaded model weights")
         print(f"Number of parameters in checkpoint: {len(model_weights)}")
+
+        model_weights = {k: v.float() for k, v in model_weights.items()}
         
         # Print first few keys to check structure
         print("First 5 keys in checkpoint:")

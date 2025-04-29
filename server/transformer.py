@@ -207,6 +207,20 @@ class LabelSmoothingLoss(nn.Module):
         true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
         true_dist.masked_fill_(ignore.unsqueeze(1), 0)
         return self.criterion(pred, true_dist)
+    
+# ------------------ Learning Rate Scheduler ------------------
+
+def get_lr_scheduler(optimizer, warmup_steps, total_steps):
+    """
+    Create a learning rate scheduler with warmup and decay
+    """
+    def lr_lambda(current_step):
+        if current_step < warmup_steps:
+            return float(current_step) / float(max(1, warmup_steps))
+        progress = float(current_step - warmup_steps) / float(max(1, total_steps - warmup_steps))
+        return max(0.05, 0.5 * (1.0 + math.cos(math.pi * progress)))
+    
+    return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
 # ------------------ Training ------------------
 
@@ -246,10 +260,22 @@ def train_transformer():
     ).to(device)
 
     criterion = LabelSmoothingLoss(label_smoothing=0.1, tgt_vocab_size=tgt_vocab_size, ignore_index=train_ds.tgt_vocab['<pad>'])
-    optimizer = optim.Adam(transformer.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-9)
+    optimizer = optim.Adam(transformer.parameters(), lr=3e-4, betas=(0.9, 0.98), eps=1e-9)
 
     transformer.train()
     num_epochs = 30
+    steps_per_epoch = len(train_loader)
+    total_steps = num_epochs * steps_per_epoch
+    warmup_steps = total_steps // 10
+
+    scheduler = get_lr_scheduler(optimizer, warmup_steps, total_steps)
+
+    best_val_loss = float('inf')
+    best_model_state = None
+    global_step = 0
+    
+    print(f"Training for {num_epochs} epochs, {steps_per_epoch} steps per epoch")
+    print(f"Total steps: {total_steps}, Warmup steps: {warmup_steps}")
 
     for epoch in range(num_epochs):
         total_loss = 0
@@ -261,8 +287,15 @@ def train_transformer():
             output = transformer(src_batch, tgt_batch[:, :-1])
             loss = criterion(output.view(-1, output.size(-1)), tgt_batch[:, 1:].reshape(-1))
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(transformer.parameters(), max_norm=1.0)
             optimizer.step()
+            scheduler.step()
             total_loss += loss.item()
+            global_step += 1
+
+            if global_step % 100 == 0:
+                current_lr = scheduler.get_last_lr()[0]
+                print(f"Step {global_step}, LR: {current_lr:.6f}")
 
         print(f"Epoch {epoch+1}, Train Loss: {total_loss/len(train_loader):.4f}")
 
@@ -275,11 +308,21 @@ def train_transformer():
                 output = transformer(src_batch, tgt_batch[:, :-1])
                 val_loss += criterion(output.view(-1, output.size(-1)), tgt_batch[:, 1:].reshape(-1)).item()
 
-        print(f"           Valid Loss: {val_loss/len(valid_loader):.4f}")
+        avg_val_loss = val_loss / len(valid_loader)
+        print(f"           Valid Loss: {avg_val_loss:.4f}")
+
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            best_model_state = {k: v.cpu().half() for k, v in transformer.state_dict().items()}
+            print(f"           New best model saved! (Loss: {best_val_loss:.4f})")
         transformer.train()
 
-    torch.save({k: v.half() for k, v in transformer.state_dict().items()}, "transformer_model_small_chin_eng.pth")
-    print("Model saved as transformer_model_small_chin_eng.pth")
+    torch.save(best_model_state, "transformer_model_small_chin_eng.pth")
+    print("Best model saved as transformer_model_small_chin_eng.pth")
+
+    final_model_state = {k: v.cpu().half() for k, v in transformer.state_dict().items()}
+    torch.save(final_model_state, "transformer_model_small_chin_eng_final.pth")
+    print("Final model saved as transformer_model_small_chin_eng_final.pth")
     return transformer
 
 # ------------------ Run ------------------
