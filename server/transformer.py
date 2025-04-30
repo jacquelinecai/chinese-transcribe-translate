@@ -289,7 +289,9 @@ def train_transformer():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(transformer.parameters(), max_norm=1.0)
             optimizer.step()
-            scheduler.step()
+            # increase learning rate every 5 epochs
+            if (epoch + 1) % 5 == 0:
+                scheduler.step()
             total_loss += loss.item()
             global_step += 1
 
@@ -317,12 +319,12 @@ def train_transformer():
             print(f"           New best model saved! (Loss: {best_val_loss:.4f})")
         transformer.train()
 
-    torch.save(best_model_state, "transformer_model_small_chin_eng.pth")
-    print("Best model saved as transformer_model_small_chin_eng.pth")
+    torch.save(best_model_state, "transformer_lr.pth")
+    print("Best model saved as transformer_lr.pth")
 
     final_model_state = {k: v.cpu().half() for k, v in transformer.state_dict().items()}
-    torch.save(final_model_state, "transformer_model_small_chin_eng_final.pth")
-    print("Final model saved as transformer_model_small_chin_eng_final.pth")
+    torch.save(final_model_state, "transformer_lr_final.pth")
+    print("Final model saved as transformer_lr_final.pth")
     return transformer
 
 # ------------------ Run ------------------
