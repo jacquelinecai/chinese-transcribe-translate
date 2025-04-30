@@ -141,7 +141,7 @@ class Transformer(nn.Module):
 # ------------------ Dataset ------------------
 
 class TranslationDataset(data.Dataset):
-    def __init__(self, path, src_vocab=None, tgt_vocab=None, min_freq=2):
+    def __init__(self, path, src_vocab=None, tgt_vocab=None):
         with open(path, 'r', encoding='utf-8') as f:
             text = f.read().strip()
         try:
@@ -157,14 +157,14 @@ class TranslationDataset(data.Dataset):
         specials = ['<pad>', '<unk>', '<sos>', '<eos>']
         if src_vocab is None:
             ctr = Counter(chain.from_iterable(self.src_sentences))
-            tokens = [w for w, c in ctr.items() if c >= min_freq]
+            tokens = [w for w, c in ctr.items()]
             self.src_vocab = {tok: i for i, tok in enumerate(specials + tokens)}
         else:
             self.src_vocab = src_vocab
 
         if tgt_vocab is None:
             ctr = Counter(chain.from_iterable(self.tgt_sentences))
-            tokens = [w for w, c in ctr.items() if c >= min_freq]
+            tokens = [w for w, c in ctr.items()]
             self.tgt_vocab = {tok: i for i, tok in enumerate(specials + tokens)}
         else:
             self.tgt_vocab = tgt_vocab
@@ -210,17 +210,15 @@ class LabelSmoothingLoss(nn.Module):
     
 # ------------------ Learning Rate Scheduler ------------------
 
-def get_lr_scheduler(optimizer, warmup_steps, total_steps):
+def get_lr_scheduler(optimizer, warmup_steps, d_model):
     """
     Create a learning rate scheduler with warmup and decay
     """
-    def lr_lambda(current_step):
-        if current_step < warmup_steps:
-            return float(current_step) / float(max(1, warmup_steps))
-        progress = float(current_step - warmup_steps) / float(max(1, total_steps - warmup_steps))
-        return max(0.05, 0.5 * (1.0 + math.cos(math.pi * progress)))
+    def noam(step):
+        step = max(step, 1)
+        return (d_model ** -0.5) * min(step ** -0.5, step * warmup_steps ** -1.5)
     
-    return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    return optim.lr_scheduler.LambdaLR(optimizer, noam)
 
 # ------------------ Training ------------------
 
@@ -260,7 +258,7 @@ def train_transformer():
     ).to(device)
 
     criterion = LabelSmoothingLoss(label_smoothing=0.1, tgt_vocab_size=tgt_vocab_size, ignore_index=train_ds.tgt_vocab['<pad>'])
-    optimizer = optim.Adam(transformer.parameters(), lr=3e-4, betas=(0.9, 0.98), eps=1e-9)
+    optimizer = optim.Adam(transformer.parameters(), lr=1.0, betas=(0.9, 0.98), eps=1e-9)
 
     transformer.train()
     num_epochs = 30
@@ -268,7 +266,7 @@ def train_transformer():
     total_steps = num_epochs * steps_per_epoch
     warmup_steps = total_steps // 10
 
-    scheduler = get_lr_scheduler(optimizer, warmup_steps, total_steps)
+    scheduler = get_lr_scheduler(optimizer, warmup_steps, d_model)
 
     best_val_loss = float('inf')
     best_model_state = None
@@ -289,9 +287,7 @@ def train_transformer():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(transformer.parameters(), max_norm=1.0)
             optimizer.step()
-            # increase learning rate every 5 epochs
-            if (epoch + 1) % 5 == 0:
-                scheduler.step()
+            scheduler.step()
             total_loss += loss.item()
             global_step += 1
 
@@ -319,12 +315,12 @@ def train_transformer():
             print(f"           New best model saved! (Loss: {best_val_loss:.4f})")
         transformer.train()
 
-    torch.save(best_model_state, "transformer_lr.pth")
-    print("Best model saved as transformer_lr.pth")
+    torch.save(best_model_state, "transformer_unk.pth")
+    print("Best model saved as transformer_unk.pth")
 
     final_model_state = {k: v.cpu().half() for k, v in transformer.state_dict().items()}
-    torch.save(final_model_state, "transformer_lr_final.pth")
-    print("Final model saved as transformer_lr_final.pth")
+    torch.save(final_model_state, "transformer_unk_final.pth")
+    print("Final model saved as transformer_unk_final.pth")
     return transformer
 
 # ------------------ Run ------------------
