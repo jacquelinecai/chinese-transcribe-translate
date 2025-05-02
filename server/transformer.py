@@ -141,7 +141,7 @@ class Transformer(nn.Module):
 # ------------------ Dataset ------------------
 
 class TranslationDataset(data.Dataset):
-    def __init__(self, path, src_vocab=None, tgt_vocab=None):
+    def __init__(self, path, src_vocab=None, tgt_vocab=None, min_freq=1):
         with open(path, 'r', encoding='utf-8') as f:
             text = f.read().strip()
         try:
@@ -157,14 +157,14 @@ class TranslationDataset(data.Dataset):
         specials = ['<pad>', '<unk>', '<sos>', '<eos>']
         if src_vocab is None:
             ctr = Counter(chain.from_iterable(self.src_sentences))
-            tokens = [w for w, c in ctr.items()]
+            tokens = [w for w, c in ctr.items() if c >= min_freq]
             self.src_vocab = {tok: i for i, tok in enumerate(specials + tokens)}
         else:
             self.src_vocab = src_vocab
 
         if tgt_vocab is None:
             ctr = Counter(chain.from_iterable(self.tgt_sentences))
-            tokens = [w for w, c in ctr.items()]
+            tokens = [w for w, c in ctr.items() if c >= min_freq]
             self.tgt_vocab = {tok: i for i, tok in enumerate(specials + tokens)}
         else:
             self.tgt_vocab = tgt_vocab
