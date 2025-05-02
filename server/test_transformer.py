@@ -79,7 +79,7 @@ def main():
     # Paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, '..', 'data', 'translation2019zh')
-    model_path = os.path.join(base_dir, 'transformer_lr_final.pth')
+    model_path = os.path.join(base_dir, 'transformer_lr_fixed_final.pth')
 
     # Print debugging info
     print(f"Base directory: {base_dir}")
