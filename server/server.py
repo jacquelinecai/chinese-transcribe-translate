@@ -6,6 +6,7 @@ import shutil
 from boxes import main as extract_text_main
 from transcribe import main as transcribe_main
 # from test_transformer import main as translate_main
+from translation import main as translate_main
 
 app = Flask(__name__)
 
@@ -74,23 +75,22 @@ def transcribe():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# @app.route('/api/translate', methods=['POST'])
-# def translate():
-#     """
-#     Translate text using test_transformer.py
-#     """
-#     data = request.json
-#     if not data or 'text' not in data:
-#         return jsonify({'error': 'No text provided'}), 400
+@app.route('/api/translate', methods=['POST'])
+def translate():
+    """
+    Translate text using test_transformer.py
+    """
+    data = request.json
+    if not data or 'text' not in data:
+        return jsonify({'error': 'No text provided'}), 400
     
-#     input_text = data['text']
+    input_text = data['text']
     
-#     try:
-#         # Call the translate_main function
-#         result = translate_main(input_text)
-#         return jsonify({'result': result}), 200
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
+    try:
+        result = translate_main(input_text)
+        return result, 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 def allowed_file(filename, allowed_extensions):
     """
