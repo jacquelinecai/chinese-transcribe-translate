@@ -1,36 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Image Upload</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: #f0f0f0;
-      display: flex;
-      justify-content: center;
-      padding-top: 100px;
-    }
-    .upload-box {
-      background: white;
-      padding: 2em;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    input[type="file"] {
-      margin: 1em 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="upload-box">
-    <h2>Upload an image for translation</h2>
-    <form action="/upload" method="POST" enctype="multipart/form-data">
-      <input type="file" name="png" accept="application/png" required />
-      <br />
-      <button type="submit">Upload</button>
-    </form>
-  </div>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Translation System</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        padding-top: 50px;
+        margin: 0;
+      }
+      .container {
+        background: white;
+        padding: 2em;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 90%;
+        max-width: 800px;
+      }
+      .upload-box {
+        text-align: center;
+        padding: 1.5em;
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        margin-bottom: 2em;
+      }
+      input[type="file"] {
+        margin: 1em 0;
+      }
+      button {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #3367d6;
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+      }
+      .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 2s linear infinite;
+        display: inline-block;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .result-box {
+        margin-top: 2em;
+        display: none;
+      }
+      .result-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      .text-box {
+        flex: 1;
+        min-width: 300px;
+        padding: 1em;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      h3 {
+        margin-top: 0;
+        color: #4285f4;
+      }
+      .metrics {
+        margin-top: 1em;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Image Translation System</h1>
+
+      <div class="upload-box">
+        <h2>Upload an image for translation</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+          <input
+            type="file"
+            name="images"
+            accept="image/png,image/jpeg"
+            multiple
+            required
+          />
+          <br />
+          <button type="submit">Process Image</button>
+        </form>
+      </div>
+
+      <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <p id="statusMessage">Processing your image...</p>
+      </div>
+
+      <div id="resultBox" class="result-box">
+        <h2>Translation Results</h2>
+        <div class="result-container">
+          <div class="text-box">
+            <h3>Original Text</h3>
+            <div id="originalText"></div>
+          </div>
+          <div class="text-box">
+            <h3>Translated Text</h3>
+            <div id="translatedText"></div>
+            <div class="metrics">
+              <strong>BERT Score:</strong> <span id="bertScore"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("uploadForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const loading = document.getElementById("loading");
+          const resultBox = document.getElementById("resultBox");
+          const statusMessage = document.getElementById("statusMessage");
+
+          // Hide results and show loading
+          resultBox.style.display = "none";
+          loading.style.display = "block";
+          statusMessage.textContent = "Uploading image...";
+
+          const formData = new FormData(this);
+
+          try {
+            // Step 1: Extract cells from image
+            statusMessage.textContent = "Extracting text cells from image...";
+            const extractResponse = await fetch(
+              "http://127.0.0.1:5000/api/extract-cells",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+            console.log(extractResponse.json);
+
+            if (!extractResponse.ok) {
+              throw new Error(
+                "Cell extraction failed: " +
+                  (await extractResponse.json()).error
+              );
+            }
+
+            // Step 2: Transcribe text from cells
+            statusMessage.textContent = "Transcribing text from cells...";
+            const transcribeResponse = await fetch(
+              "http://127.0.0.1:5000/api/transcribe",
+              {
+                method: "GET",
+              }
+            );
+
+            if (!transcribeResponse.ok) {
+              throw new Error(
+                "Transcription failed: " +
+                  (await transcribeResponse.json()).error
+              );
+            }
+
+            const transcribeData = await transcribeResponse.json();
+            let originalText = transcribeData.result;
+            const firstKey = Object.keys(transcribeData.result)[0];
+            originalText = transcribeData.result[firstKey];
+            console.log(`original text: ${originalText}`);
+            document.getElementById("originalText").textContent = originalText;
+
+            // Step 3: Translate the text
+            statusMessage.textContent = "Translating text...";
+            const translateResponse = await fetch(
+              "http://127.0.0.1:5000/api/translate",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  text: originalText,
+                }),
+              }
+            );
+
+            if (!translateResponse.ok) {
+              throw new Error(
+                "Translation failed: " + (await translateResponse.json()).error
+              );
+            }
+
+            const translateData = await translateResponse.json();
+            document.getElementById("translatedText").textContent =
+              translateData.prediction;
+            document.getElementById("bertScore").textContent =
+              translateData.bert.toFixed(4);
+
+            // Hide loading and show results
+            loading.style.display = "none";
+            resultBox.style.display = "block";
+          } catch (error) {
+            loading.style.display = "none";
+            alert("Error: " + error.message);
+            console.error("Error:", error);
+          }
+        });
+    </script>
+  </body>
 </html>

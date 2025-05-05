@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
 import shutil
@@ -9,18 +10,19 @@ from transcribe import main as transcribe_main
 from translation import main as translate_main
 
 app = Flask(__name__)
-
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 # Configure upload folder for images
 UPLOAD_FOLDER = 'uploads'
 UPLOAD_CELLS_FOLDER = 'uploaded_extracted_cells'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_CELLS_FOLDER, exist_ok=True)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit file size to 16MB
 
 @app.route("/", methods=['GET'])
 def index():
-    return ""
+    return render_template('index.html')
 
 @app.route('/api/extract-cells', methods=['POST'])
 def extract_text():
@@ -86,6 +88,9 @@ def translate():
     
     input_text = data['text']
     
+    if isinstance(input_text, dict):
+        input_text = next(iter(input_text.values()), '')
+
     try:
         result = translate_main(input_text)
         return result, 200
