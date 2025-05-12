@@ -18,7 +18,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_CELLS_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit file size to 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 @app.route("/", methods=['GET'])
 def index():
@@ -32,7 +32,6 @@ def extract_text():
     print("Request received")
     print(f"Request files: {request.files}")
     print(f"Request files keys: {list(request.files.keys())}")
-    # Check if request contains files
     if 'images' not in request.files:
         return jsonify({'error': 'No images provided'}), 400
     
@@ -53,7 +52,6 @@ def extract_text():
         return jsonify({'error': 'No valid image files provided'}), 400
     
     try:
-        # Call the extract_text_main function
         result = extract_text_main()
         if os.path.exists(UPLOAD_FOLDER):
             shutil.rmtree(UPLOAD_FOLDER)
@@ -68,7 +66,6 @@ def transcribe():
     Transcribe text using transcribe.py
     """
     try:
-        # Call the transcribe_main function
         result = transcribe_main()
         if os.path.exists(UPLOAD_CELLS_FOLDER):
             shutil.rmtree(UPLOAD_CELLS_FOLDER)
@@ -88,12 +85,15 @@ def translate():
     
     input_text = data['text']
     
-    if isinstance(input_text, dict):
-        input_text = next(iter(input_text.values()), '')
+    if not isinstance(input_text, list):
+        return jsonify({'error': 'Text must be an array of strings'}), 400
+    
+    if not all(isinstance(item, str) for item in input_text):
+        return jsonify({'error': 'All items in the text array must be strings'}), 400
 
     try:
         result = translate_main(input_text)
-        return result, 200
+        return {'result': result}, 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

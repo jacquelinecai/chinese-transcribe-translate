@@ -1,7 +1,6 @@
 import cv2
 import os
 import glob
-import numpy as np
 
 def process_image(input_path, output_dir):
     filename = os.path.basename(input_path)

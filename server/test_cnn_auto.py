@@ -1,11 +1,9 @@
-import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import Image
 import os
-
 
 class HandwrittenChineseCNN(nn.Module):
     def __init__(self, num_classes):

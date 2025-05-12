@@ -2,10 +2,8 @@ import os
 import shutil
 import json
 
-# Path to JSON file
 json_file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "hsk_characters", "character.json"))
 
-# Load valid character folder names from JSON
 def load_valid_characters(json_path):
     """
     Loads the list of valid Chinese characters from the JSON file.
@@ -23,12 +21,11 @@ def load_valid_characters(json_path):
     try:
         with open(json_path, "r", encoding="utf-8") as file:
             data = json.load(file)
-            return set(data.get("words", []))  # Convert list to a set for fast lookup
+            return set(data.get("words", []))
     except Exception as e:
         print(f"Error reading JSON file: {e}")
         return set()
 
-# Get all folders in the target directory
 def get_folders_from_target_directory(target_directory):
     """
     Retrieves a list of all folders directly under the given target directory.
@@ -45,7 +42,6 @@ def get_folders_from_target_directory(target_directory):
 
     return [entry.name for entry in os.scandir(target_directory) if entry.is_dir()]
 
-# Delete folder if it's not in the valid list
 def delete_unlisted_folders(target_directory, valid_names):
     """
     Deletes folders inside the target directory that are not in the valid_names set.
@@ -65,13 +61,10 @@ def delete_unlisted_folders(target_directory, valid_names):
             except Exception as e:
                 print(f"Error deleting folder '{folder}': {e}")
 
-# Main Execution
 if __name__ == "__main__":
-    # Get the absolute path to the "project" directory
-    project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # Go up one level
-    target_dir = os.path.join(project_dir, "data", "chinese_characters")  # Path to target directory
+    project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    target_dir = os.path.join(project_dir, "data", "chinese_characters")
 
-    # Load valid characters from JSON
     valid_characters = load_valid_characters(json_file_path)
 
     if valid_characters:

@@ -144,7 +144,6 @@
           const resultBox = document.getElementById("resultBox");
           const statusMessage = document.getElementById("statusMessage");
 
-          // Hide results and show loading
           resultBox.style.display = "none";
           loading.style.display = "block";
           statusMessage.textContent = "Uploading image...";
@@ -161,8 +160,6 @@
                 body: formData,
               }
             );
-
-            console.log(extractResponse.json);
 
             if (!extractResponse.ok) {
               throw new Error(
@@ -188,11 +185,25 @@
             }
 
             const transcribeData = await transcribeResponse.json();
-            let originalText = transcribeData.result;
-            const firstKey = Object.keys(transcribeData.result)[0];
-            originalText = transcribeData.result[firstKey];
+            let originalText = [];
+            if (
+              typeof transcribeData.result === "object" &&
+              transcribeData.result !== null
+            ) {
+              const keys = Object.keys(transcribeData.result);
+              originalText = keys.map((key) => transcribeData.result[key]);
+              console.log(
+                `Original texts (${keys.length} items):`,
+                originalText
+              );
+            } else {
+              originalText = [transcribeData.result];
+              console.log(`Original text (single item):`, originalText);
+            }
             console.log(`original text: ${originalText}`);
-            document.getElementById("originalText").textContent = originalText;
+            document.getElementById("originalText").innerHTML = originalText
+              .map((text) => `<p>${text}</p>`)
+              .join("");
 
             // Step 3: Translate the text
             statusMessage.textContent = "Translating text...";
@@ -216,12 +227,71 @@
             }
 
             const translateData = await translateResponse.json();
-            document.getElementById("translatedText").textContent =
-              translateData.prediction;
-            document.getElementById("bertScore").textContent =
-              translateData.bert.toFixed(4);
+            const translateRes = translateData.result;
+            const translatePredictions = translateRes.map(
+              (item) => item.prediction
+            );
+            const bertScores = translateRes.map((item) => item.bert);
 
-            // Hide loading and show results
+            document.querySelector(".result-container").innerHTML = "";
+
+            const resultContainer = document.querySelector(".result-container");
+
+            const metricsDiv = document.querySelector(".metrics");
+            if (metricsDiv) {
+              metricsDiv.remove();
+            }
+
+            originalText.forEach((text, index) => {
+              const rowContainer = document.createElement("div");
+              rowContainer.className = "translation-row";
+              rowContainer.style.display = "flex";
+              rowContainer.style.flexWrap = "wrap";
+              rowContainer.style.gap = "20px";
+              rowContainer.style.marginBottom = "20px";
+              rowContainer.style.width = "100%";
+
+              const originalBox = document.createElement("div");
+              originalBox.className = "text-box";
+              originalBox.style.flex = "1";
+              originalBox.style.minWidth = "300px";
+              originalBox.style.padding = "1em";
+              originalBox.style.border = "1px solid #ddd";
+              originalBox.style.borderRadius = "5px";
+
+              originalBox.innerHTML = `
+                <h3>Original Text</h3>
+                <div>${text}</div>
+              `;
+
+              const translatedBox = document.createElement("div");
+              translatedBox.className = "text-box";
+              translatedBox.style.flex = "1";
+              translatedBox.style.minWidth = "300px";
+              translatedBox.style.padding = "1em";
+              translatedBox.style.border = "1px solid #ddd";
+              translatedBox.style.borderRadius = "5px";
+
+              const translation =
+                translatePredictions[index] || "No translation available";
+              const bertScore =
+                bertScores[index] !== undefined
+                  ? bertScores[index].toFixed(4)
+                  : "N/A";
+
+              translatedBox.innerHTML = `
+                <h3>Translated Text</h3>
+                <div>${translation}</div>
+                <div class="metrics" style="margin-top: 10px; padding: 8px; background: #f9f9f9; border-radius: 4px;">
+                  <strong>BERT Score:</strong> <span>${bertScore}</span>
+                </div>
+              `;
+
+              rowContainer.appendChild(originalBox);
+              rowContainer.appendChild(translatedBox);
+              resultContainer.appendChild(rowContainer);
+            });
+
             loading.style.display = "none";
             resultBox.style.display = "block";
           } catch (error) {

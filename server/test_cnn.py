@@ -5,7 +5,6 @@ import torchvision.transforms as transforms
 from PIL import Image
 import os
 
-
 class HandwrittenChineseCNN(nn.Module):
     def __init__(self, num_classes):
         super(HandwrittenChineseCNN, self).__init__()
@@ -103,7 +102,7 @@ if __name__ == "__main__":
     try:
         top_n = int(input("\nPlease specify number of predictions per input image:\n"))
     except ValueError:
-        top_n = 5  #default
+        top_n = 5
 
     while True:
         user_input_path = input("\nEnter the path of the test image:\n").strip()
